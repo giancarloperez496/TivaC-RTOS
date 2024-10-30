@@ -58,7 +58,7 @@ uint8_t firstTask = 1;
 // control
 bool priorityScheduler = false;    // priority (true) or round-robin (false)
 bool priorityInheritance = false; // priority inheritance for mutexes
-bool preemption = false;          // preemption (true) or cooperative (false)
+bool preemption = true;          // preemption (true) or cooperative (false)
 
 // tcb
 #define NUM_PRIORITIES   16
@@ -89,17 +89,6 @@ extern void popR11_R4();
 // Subroutines
 //-----------------------------------------------------------------------------
 
-/*void pidof(const char name[]) {
-    fput1sUart0("%s launched\n", name);
-    uint8_t i;
-    for (i = 0; i < MAX_TASKS; i++) {
-        if (str_equal(tcb[i].name, name)) {
-            fput1sUart0("Name: %s", name);
-            fput1hUart0("PID: %p", tcb[i].pid);
-            return;
-        }
-    }
-}*/
 
 bool initMutex(uint8_t mutex) {
     bool ok = (mutex < MAX_MUTEXES);
@@ -140,12 +129,21 @@ uint8_t rtosScheduler(void) {
     bool ok;
     static uint8_t task = 0xFF;
     ok = false;
+    uint8_t i;
+    uint8_t highestPrio = 0xFF;
+    for (i = 0; i < MAX_TASKS; i++) {
+        if (tcb[i].priority < highestPrio && tcb[i].state == STATE_READY) {
+            highestPrio = tcb[i].priority;
+        }
+    }
     while (!ok)
     {
         task++;
-        if (task >= MAX_TASKS)
-            task = 0;
+        task %= MAX_TASKS;
         ok = (tcb[task].state == STATE_READY);
+        if (priorityScheduler) {
+            ok &= (tcb[task].priority == highestPrio);
+        }
     }
     return task;
 }
@@ -223,7 +221,7 @@ bool createThread(_fn fn, const char name[], uint8_t priority, uint32_t stackByt
                     uint32_t* sp = (uint32_t*)(alloc + stackBytes);
                     tcb[i].spInit = sp; //set initial stack pointer to stack base
                     tcb[i].sp = sp; //set stack pointer to stack base (stack pointer decrements on push)
-                    populateInitialStack(&tcb[i].sp, (uint32_t**)fn); //push everything onto the stack to make it appear as if it has ran before
+                    populateInitialStack((uint32_t**)&tcb[i].sp, (uint32_t**)fn); //push everything onto the stack to make it appear as if it has ran before
                     tcb[i].priority = priority;
                     uint64_t taskSrd = createNoSramAccessMask(); //create mask for no sram access
                     addSramAccessWindow(&taskSrd, (uint32_t*)alloc, stackBytes); //modify srd mask to add access to malloc'd region
@@ -295,16 +293,15 @@ void sysTickIsr(void) {
         if (tcb[i].state == STATE_DELAYED) {
             if (tcb[i].ticks == 0) {
                 tcb[i].state = STATE_READY;
-                //yield();
             }
             else {
                 tcb[i].ticks--;
             }
         }
     }
-    //if (preemption) { //if preemption is enabled, context switch to next task
+    if (preemption) { //if preemption is enabled, context switch to next task
         NVIC_INT_CTRL_R |= NVIC_INT_CTRL_PEND_SV;
-    //}
+    }
 }
 
 // REQUIRED: in coop and preemptive, modify this function to add support for task switching
@@ -412,7 +409,7 @@ void svCallIsr(void) {
             semaphores[i].count--;
         }
         break;
-    case 0xFF:
+    case REBOOT:
         NVIC_APINT_R = NVIC_APINT_VECTKEY | NVIC_APINT_SYSRESETREQ;
         break;
     }

@@ -28,12 +28,10 @@ void pkill(char* name) {
 
 void pi(bool on) {
     fput1sUart0("pi %s\n", on ? "on" : "off");
-    //priorityInheritance = on;
 }
 
 void preempt(bool on) {
     fput1sUart0("preempt %s\n", on ? "on" : "off");
-    //preemption = on;
 }
 
 void sched(bool prio_on) {

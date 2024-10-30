@@ -66,7 +66,7 @@ int main(void)
     initSemaphore(keyReleased, 0);
     initSemaphore(flashReq, 5);
 
-    ok =  createThread(idle, "Idle", 7, 512);
+    ok = createThread(idle, "Idle", 7, 512);
 
     // Add other processes
     ok &= createThread(lengthyFn, "LengthyFn", 6, 1024);
@@ -77,7 +77,7 @@ int main(void)
     ok &= createThread(important, "Important", 0, 1024);
     //ok &= createThread(uncooperative, "Uncoop", 6, 1024);
     //ok &= createThread(errant, "Errant", 6, 1024);
-    //ok &= createThread(shell, "Shell", 6, 4096);
+    ok &= createThread(shell, "Shell", 6, 4096);
     // TODO: Add code to implement a periodic timer and ISR
 
     // Start up RTOS

@@ -48,6 +48,7 @@ typedef void (*_fn)();
 #define UNLOCK 4
 #define WAIT 5
 #define POST 6
+#define REBOOT 0xFF
 
 //-----------------------------------------------------------------------------
 // Subroutines
