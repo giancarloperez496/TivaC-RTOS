@@ -56,7 +56,7 @@ uint8_t taskCount = 0;            // total number of valid tasks
 uint8_t firstTask = 1;
 
 // control
-bool priorityScheduler = true;    // priority (true) or round-robin (false)
+bool priorityScheduler = false;    // priority (true) or round-robin (false)
 bool priorityInheritance = false; // priority inheritance for mutexes
 bool preemption = false;          // preemption (true) or cooperative (false)
 
@@ -88,6 +88,18 @@ extern void popR11_R4();
 //-----------------------------------------------------------------------------
 // Subroutines
 //-----------------------------------------------------------------------------
+
+/*void pidof(const char name[]) {
+    fput1sUart0("%s launched\n", name);
+    uint8_t i;
+    for (i = 0; i < MAX_TASKS; i++) {
+        if (str_equal(tcb[i].name, name)) {
+            fput1sUart0("Name: %s", name);
+            fput1hUart0("PID: %p", tcb[i].pid);
+            return;
+        }
+    }
+}*/
 
 bool initMutex(uint8_t mutex) {
     bool ok = (mutex < MAX_MUTEXES);
@@ -127,18 +139,13 @@ void initRtos(void) {
 uint8_t rtosScheduler(void) {
     bool ok;
     static uint8_t task = 0xFF;
-    uint8_t highestPrio = NUM_PRIORITIES;
-    uint8_t i;
-    for (i = 0; i < MAX_TASKS; i++) {
-        if (tcb[i].priority <= highestPrio && tcb[i].state == STATE_READY) {
-            highestPrio = tcb[i].priority;
-        }
-    }
     ok = false;
-    while (!ok) {
+    while (!ok)
+    {
         task++;
-        task %= MAX_TASKS;
-        ok = (tcb[task].priority == highestPrio && tcb[task].state == STATE_READY);
+        if (task >= MAX_TASKS)
+            task = 0;
+        ok = (tcb[task].state == STATE_READY);
     }
     return task;
 }
@@ -147,11 +154,7 @@ uint8_t rtosScheduler(void) {
 // by calling scheduler, set srd bits, setting PSP, ASP bit, call fn with fn add in R0
 // fn set TMPL bit, and PC <= fn
 void startRtos(void) {
-    //PSP = memory (will be overwritten)
-    //ASP
-    //TMPL
-    //pendSV
-    setPsp(0x20008000);
+    setPsp((uint32_t*)0x20008000);
     setAsp(); //set ASP bit to switch to use psp
     setCtrl(1); //set TMPL; move to unpriv (can no longer pendSV)
     __asm(" SVC #0x00"); //start RTOS
@@ -174,7 +177,7 @@ void pop_from_stack(uint32_t** sp, uint32_t* ptr) {
 //makes the thread appear "as if it has run before"
 void populateInitialStack(uint32_t** sp, _fn fn) {
     push_to_stack(sp, 1 << 24); //xPSR - THUMB bit (24) has to be correct or will fault (functions defined in thumb), 4 flags are arbitrary
-    push_to_stack(sp, fn); //PC - fn ptr
+    push_to_stack(sp, (uint32_t)fn); //PC - fn ptr
     push_to_stack(sp, 0xFFFFFFFD); //initial LR - bogus
     push_to_stack(sp, 12); //R12 - bogus
     push_to_stack(sp, 3); //R3 - bogus
@@ -220,7 +223,7 @@ bool createThread(_fn fn, const char name[], uint8_t priority, uint32_t stackByt
                     uint32_t* sp = (uint32_t*)(alloc + stackBytes);
                     tcb[i].spInit = sp; //set initial stack pointer to stack base
                     tcb[i].sp = sp; //set stack pointer to stack base (stack pointer decrements on push)
-                    populateInitialStack(&tcb[i].sp, fn); //push everything onto the stack to make it appear as if it has ran before
+                    populateInitialStack(&tcb[i].sp, (uint32_t**)fn); //push everything onto the stack to make it appear as if it has ran before
                     tcb[i].priority = priority;
                     uint64_t taskSrd = createNoSramAccessMask(); //create mask for no sram access
                     addSramAccessWindow(&taskSrd, (uint32_t*)alloc, stackBytes); //modify srd mask to add access to malloc'd region
@@ -262,16 +265,6 @@ void sleep(uint32_t tick) {
     __asm(" SVC #0x02");
 }
 
-int32_t getTaskFromMutex(int8_t mutex) {
-    int i;
-    for (i = 0; i < MAX_TASKS; i++) {
-        if (tcb[i].mutex == mutex) {
-            return i;
-        }
-    }
-    return -1;
-}
-
 // REQUIRED: modify this function to lock a mutex using pendsv
 void lock(int8_t mutex) { //svc 1
     __asm(" SVC #0x03");
@@ -309,9 +302,9 @@ void sysTickIsr(void) {
             }
         }
     }
-    if (preemption) { //if preemption is enabled, context switch to next task
+    //if (preemption) { //if preemption is enabled, context switch to next task
         NVIC_INT_CTRL_R |= NVIC_INT_CTRL_PEND_SV;
-    }
+    //}
 }
 
 // REQUIRED: in coop and preemptive, modify this function to add support for task switching
@@ -378,7 +371,8 @@ void svCallIsr(void) {
         }
         else {
             q = mutexes[i].queueSize;
-            mutexes[i].processQueue[q++] = taskCurrent;
+            mutexes[i].processQueue[q] = taskCurrent;
+            mutexes[i].queueSize++;
             tcb[taskCurrent].state = STATE_BLOCKED_MUTEX;
             NVIC_INT_CTRL_R |= NVIC_INT_CTRL_PEND_SV;
         }
@@ -402,8 +396,10 @@ void svCallIsr(void) {
         }
         else {
             q = semaphores[i].queueSize;
-            semaphores[i].processQueue[q++] = taskCurrent;
+            semaphores[i].processQueue[q] = taskCurrent;
+            semaphores[i].queueSize++;
             tcb[taskCurrent].state = STATE_BLOCKED_SEMAPHORE;
+            tcb[taskCurrent].semaphore = i;
             NVIC_INT_CTRL_R |= NVIC_INT_CTRL_PEND_SV;
         }
         break;
@@ -412,9 +408,12 @@ void svCallIsr(void) {
         if (semaphores[i].queueSize > 0) {
             next = semaphores[i].processQueue[0];
             tcb[next].state = STATE_READY;
-            dequeue(semaphores[i].processQueue, semaphores[i].queueSize); //remove 0th element
+            dequeue(semaphores[i].processQueue, semaphores[i].queueSize);//, 0); //remove 0th element
             semaphores[i].count--;
         }
+        break;
+    case 0xFF:
+        NVIC_APINT_R = NVIC_APINT_VECTKEY | NVIC_APINT_SYSRESETREQ;
         break;
     }
 }

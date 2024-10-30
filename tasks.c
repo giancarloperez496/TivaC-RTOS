@@ -92,41 +92,12 @@ void idle(void)
 {
     while(true)
     {
-        //putsUart0("Idle called\n");
         setPinValue(ORANGE_LED, 1);
         waitMicrosecond(1000);
         setPinValue(ORANGE_LED, 0);
         yield();
     }
 }
-
-/*void T1() {
-    while (1) {
-        putsUart0("T1 called\n");
-        sleep(5);
-    }
-}
-
-void T2() {
-    while(1) {
-        putsUart0("T2 called\n");
-        sleep(2);
-    }
-}
-
-void T3() {
-    while (1) {
-        putsUart0("T3 called\n");
-        sleep(4);
-    }
-}
-
-void T4() {
-    while (1) {
-        putsUart0("T4 called\n");
-        sleep(1);
-    }
-}*/
 
 void flash4Hz(void)
 {

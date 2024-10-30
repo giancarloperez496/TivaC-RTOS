@@ -30,10 +30,6 @@
 void initHw(void);
 
 void idle(void);
-void T1(void);
-void T2(void);
-void T3(void);
-void T4(void);
 void flash4Hz(void);
 void oneshot(void);
 void partOfLengthyFn(void);
