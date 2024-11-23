@@ -10,20 +10,20 @@ GEN_OPTS__FLAG :=
 GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
-"./src/clock.obj" \
-"./src/ctrl.obj" \
-"./src/faults.obj" \
-"./src/gpio.obj" \
-"./src/kernel.obj" \
-"./src/mm.obj" \
-"./src/nvic.obj" \
-"./src/rtos.obj" \
-"./src/shell.obj" \
-"./src/tasks.obj" \
-"./src/tm4c123gh6pm_startup_ccs.obj" \
-"./src/uart0.obj" \
-"./src/wait.obj" \
-"../src/tm4c123gh6pm.cmd" \
+"./clock.obj" \
+"./ctrl.obj" \
+"./faults.obj" \
+"./gpio.obj" \
+"./kernel.obj" \
+"./mm.obj" \
+"./nvic.obj" \
+"./rtos.obj" \
+"./shell.obj" \
+"./tasks.obj" \
+"./tm4c123gh6pm_startup_ccs.obj" \
+"./uart0.obj" \
+"./wait.obj" \
+"../tm4c123gh6pm.cmd" \
 $(GEN_CMDS__FLAG) \
 -llibc.a \
 
@@ -34,8 +34,8 @@ RMDIR := RMDIR /S/Q
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include src/subdir_vars.mk
--include src/subdir_rules.mk
+-include subdir_vars.mk
+-include subdir_rules.mk
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
@@ -146,16 +146,16 @@ all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 RTOSProject.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: Arm Linker'
-	"C:/ti/ccs1240/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --define=ccs="ccs" --define=PART_TM4C123GH6PM -g --gcc --diag_warning=225 --diag_wrap=off --display_error_number --abi=eabi -z -m"RTOSProject.map" --heap_size=0 --stack_size=512 -i"C:/ti/ccs1240/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/lib" -i"C:/ti/ccs1240/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="RTOSProject_linkInfo.xml" --rom_model -o "RTOSProject.out" $(ORDERED_OBJS)
+	"C:/ti/ccs1240/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me -O2 --define=ccs="ccs" --define=PART_TM4C123GH6PM --gcc --diag_warning=225 --diag_wrap=off --display_error_number --abi=eabi -z -m"RTOSProject.map" --heap_size=0 --stack_size=512 -i"C:/ti/ccs1240/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/lib" -i"C:/ti/ccs1240/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="RTOSProject_linkInfo.xml" --rom_model -o "RTOSProject.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "src\clock.obj" "src\ctrl.obj" "src\faults.obj" "src\gpio.obj" "src\kernel.obj" "src\mm.obj" "src\nvic.obj" "src\rtos.obj" "src\shell.obj" "src\tasks.obj" "src\tm4c123gh6pm_startup_ccs.obj" "src\uart0.obj" "src\wait.obj" 
-	-$(RM) "src\clock.d" "src\faults.d" "src\gpio.d" "src\kernel.d" "src\mm.d" "src\nvic.d" "src\rtos.d" "src\shell.d" "src\tasks.d" "src\tm4c123gh6pm_startup_ccs.d" "src\uart0.d" 
-	-$(RM) "src\ctrl.d" "src\wait.d" 
+	-$(RM) "clock.obj" "ctrl.obj" "faults.obj" "gpio.obj" "kernel.obj" "mm.obj" "nvic.obj" "rtos.obj" "shell.obj" "tasks.obj" "tm4c123gh6pm_startup_ccs.obj" "uart0.obj" "wait.obj" 
+	-$(RM) "clock.d" "faults.d" "gpio.d" "kernel.d" "mm.d" "nvic.d" "rtos.d" "shell.d" "tasks.d" "tm4c123gh6pm_startup_ccs.d" "uart0.d" 
+	-$(RM) "ctrl.d" "wait.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
