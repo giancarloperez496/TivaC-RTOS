@@ -36,6 +36,20 @@
 // Subroutines
 //-----------------------------------------------------------------------------
 
+uint32_t tonumber(const char* str, uint32_t base) {
+    int32_t i;
+    uint32_t n = 0;
+    uint32_t p = 1;
+    uint32_t len = str_length(str);
+    char digit;
+    for (i = len-1; i >= 0; i--) {
+        digit = (str[i] >= '0' && str[i] <= '9') ? str[i]-48 : str[i]-55;
+        n += (digit)*p;
+        p*=base;
+    }
+    return n;
+}
+
 // Initialize UART0
 void initUart0()
 {
@@ -305,7 +319,19 @@ char* getFieldString(USER_DATA* data, uint8_t fieldNumber) {
 int32_t getFieldInteger(USER_DATA* data, uint8_t fieldNumber) {
     if (fieldNumber < MAX_FIELDS) {
         if (data->fieldType[fieldNumber] == 'n') {
-            return atoi((const char*)&(data->buffer[data->fieldPosition[fieldNumber]]));
+            return tonumber((const char*)&(data->buffer[data->fieldPosition[fieldNumber]]), 10);
+        }
+    }
+    else {
+        return NULL;
+    }
+    return NULL;
+}
+
+uint32_t getFieldHexInteger(USER_DATA* data, uint8_t fieldNumber) {
+    if (fieldNumber < MAX_FIELDS) {
+        if (data->fieldType[fieldNumber] == 'n') {
+            return tonumber((const char*)&(data->buffer[data->fieldPosition[fieldNumber]]), 16);
         }
     }
     else {

@@ -48,6 +48,7 @@ void padded_putsUart0(const char* str, uint8_t align);
 void padded_puthUart0(uint32_t h, uint8_t align);
 char getcUart0();
 void tostring(uint32_t n, char* out, uint32_t b);
+uint32_t tonumber(const char* str, uint32_t base);
 void getsUart0(USER_DATA* data);
 int str_length(const char str[]);
 bool str_equal(const char* str1, const char* str2);
@@ -55,6 +56,7 @@ void str_copy(char dest[], const char* src);
 void parseFields(USER_DATA* data);
 char* getFieldString(USER_DATA* data, uint8_t fieldNumber);
 int32_t getFieldInteger(USER_DATA* data, uint8_t fieldNumber);
+uint32_t getFieldHexInteger(USER_DATA* data, uint8_t fieldNumber);
 bool isCommand(USER_DATA* data, const char strCommand[], uint8_t minArguments);
 bool kbhitUart0();
 

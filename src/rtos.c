@@ -46,7 +46,6 @@
 
 /*
  * todo
- * 19. make a timer and ur done
  */
 int main(void) {
     bool ok;
@@ -68,7 +67,6 @@ int main(void) {
     initSemaphore(flashReq, 5);
 
     ok = createThread(idle, "Idle", 15, 512);
-    //ok =  createThread(idle2, "Idle2", 15, 512);
 
     // Add other processes
     ok &= createThread(lengthyFn, "LengthyFn", 12, 1024);

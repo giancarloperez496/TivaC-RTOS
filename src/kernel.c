@@ -275,13 +275,14 @@ uint32_t kill_proc(uint32_t pid) { //svc stuff goes in here
             }
             //if not locked by process, check if it's in queue and remove it
             if (tcb[i].semaphore != INVALID_SEMAPHORE) {
-                //semaphores[tcb[i].semaphore].count++; //increment semaphore
+                semaphores[tcb[i].semaphore].count++; //increment semaphore
                 if (tcb[i].state == STATE_BLOCKED_SEMAPHORE) {
                     //if this task is in the semaphore's queue
                     for (j = 0; j < semaphores[tcb[i].semaphore].queueSize; j++) {
                         if (semaphores[tcb[i].semaphore].processQueue[j] == i) {
                             dequeue(semaphores[tcb[i].semaphore].processQueue, semaphores[tcb[i].semaphore].queueSize, j);
                             semaphores[tcb[i].semaphore].queueSize--;//get rid of it
+                            semaphores[tcb[i].semaphore].count--;
                         }
                     }
                     //if another task in queue for semaphore, post it
@@ -305,6 +306,9 @@ uint32_t kill_proc(uint32_t pid) { //svc stuff goes in here
         else {
             stat = 0;
         }
+    }
+    else {
+        stat = 0;
     }
     //set thread to STATE_STOPPED
     //loop through alloc table, if owner is pid free()
@@ -385,7 +389,7 @@ void sysTickIsr(void) {
     //called every 1ms
     //decrements task ticks and changes state from blocked or ready
     systime++;
-    uint8_t is2sec = (systime % (PS_REFRESH_TIME*1000) == 0); //calculate mod once
+    uint8_t is1sec = (systime % (PS_REFRESH_TIME*1000) == 0); //calculate mod once
     uint32_t i;
     for(i = 0; i < taskCount; i++) {
         if (tcb[i].state == STATE_DELAYED) {
@@ -397,12 +401,12 @@ void sysTickIsr(void) {
             }
         }
         if (tcb[i].state != STATE_INVALID) {
-            if (is2sec) {
+            if (is1sec) {
                 tcb[i].elapsed[!pingpong] = 0; //if pingpong, write A, else write B
             }
         }
     }
-    if (is2sec) { //if 2000ms reached
+    if (is1sec) { //if 2000ms reached
         pingpong ^= 1; //flip ping
     }
     if (preemption) { //if preemption is enabled, context switch to next task
@@ -429,14 +433,9 @@ __attribute__((naked)) void pendsvIsr(void) {
     }
     firstTask = 0;
     tcb[taskCurrent].elapsed[pingpong] += (systime - tcb[taskCurrent].runtime);
-    //elapsed is numerator
-    //go to pong and zero all counters, count up after two seconds, after two seconds switch to ping, zero all of those and count up in there, denominator is 2*40e6
-    //divison percentages etc are in shell
-    //read systick timer (subtract from old timer, difference between those are) difference stored in the ping pong in tcb
 
     taskCurrent = rtosScheduler(); //call scheduler
 
-    //record current systick timer (could be global)
     tcb[taskCurrent].runtime = systime; //records the starting time of the task
 
     applySramAccessMask(tcb[taskCurrent].srd); //restore SRD

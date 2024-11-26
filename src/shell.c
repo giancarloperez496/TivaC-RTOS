@@ -214,7 +214,7 @@ void shell() {
             }
             if (isCommand(&data, "kill", 1)) { //kill pid
                 valid = true;
-                int pid = getFieldInteger(&data, 1);
+                uint32_t pid = getFieldHexInteger(&data, 1);
                 kill(pid);
             }
             if (isCommand(&data, "pkill", 1)) { //pkill proc_name
