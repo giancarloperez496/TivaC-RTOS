@@ -134,19 +134,20 @@ extern uint32_t getR0();
 // Subroutines
 //-----------------------------------------------------------------------------
 
+uint32_t getCurrentTask();
+uint32_t getCurrentPid();
+uint32_t getSysTime();
 bool initMutex(uint8_t mutex);
 bool initSemaphore(uint8_t semaphore, uint8_t count);
 void initRtos(void);
 void startRtos(void);
 bool createThread(_fn fn, const char name[], uint8_t priority, uint32_t stackBytes);
-uint32_t kill_proc(uint32_t pid);
+int32_t kill_proc(uint32_t pid);
 uint32_t restartThread(_fn fn);
 uint32_t stopThread(_fn fn);
 
 void setThreadPriority(_fn fn, uint8_t priority);
-uint32_t getCurrentTask();
-uint32_t getCurrentPid();
-uint32_t getSysTime();
+
 
 void yield(void);
 void sleep(uint32_t tick);

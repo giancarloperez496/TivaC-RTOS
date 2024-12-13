@@ -1,11 +1,33 @@
+/******************************************************************************
+ * File:        faults.c
+ *
+ * Author:      Giancarlo Perez
+ *
+ * Created:     12/13/24
+ *
+ * Description: -
+ ******************************************************************************/
+
+//=============================================================================
+// INCLUDES
+//=============================================================================
+
 #include "faults.h"
 #include "kernel.h"
+
+//=============================================================================
+// GLOBALS
+//=============================================================================
 
 extern void setAsp();
 extern void setPsp(void* addr); //set the address of the SP, can only be done in privileged i think
 extern uint32_t* getPsp();
 extern uint32_t* getMsp();
 extern void setCtrl(uint32_t mask);
+
+//=============================================================================
+// PUBLIC FUNCTIONS
+//=============================================================================
 
 void busFaultIsr(void) {
     uint32_t pid = getCurrentPid();
@@ -69,7 +91,7 @@ void mpuFaultIsr(void) {
     fput1hUart0("R12:\t0x%p\n", psp[4]);
     putsUart0("------------------------------------\n\n");
     NVIC_SYS_HND_CTRL_R &= ~NVIC_SYS_HND_CTRL_MEMP; //clear fault pending register
-    uint32_t stat = kill_proc(pid);
+    int32_t stat = kill_proc(pid);
     if (stat != -1) {
         fput1hUart0("Killed process %p\n\n>", pid);
     }

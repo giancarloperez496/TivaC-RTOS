@@ -1,11 +1,12 @@
-// RTOS Framework - Fall 2024
-// J Losh
-
-// Student Name: Giancarlo Perez
-// TO DO: Add your name(s) on this line.
-//        Do not include your ID number(s) in the file.
-
-// Please do not change any function name in this code or the thread priorities
+/******************************************************************************
+ * File:        rtos.c
+ *
+ * Author:      Giancarlo Perez
+ *
+ * Created:     12/7/24
+ *
+ * Description: -
+ ******************************************************************************/
 
 //-----------------------------------------------------------------------------
 // Hardware Target
@@ -25,9 +26,9 @@
 //   Region to control access to flash, peripherals, and bitbanded areas
 //   4 or more regions to allow SRAM access (RW or none for task)
 
-//-----------------------------------------------------------------------------
-// Device includes, defines, and assembler directives
-//-----------------------------------------------------------------------------
+//=============================================================================
+// INCLUDES
+//=============================================================================
 
 #include "tm4c123gh6pm.h"
 #include "clock.h"
@@ -40,16 +41,12 @@
 #include "tasks.h"
 #include "shell.h"
 
-//-----------------------------------------------------------------------------
-// Main
-//-----------------------------------------------------------------------------
+//=============================================================================
+// MAIN FUNCTION
+//=============================================================================
 
-/*
- * todo
- */
 int main(void) {
     bool ok;
-
     // Initialize hardware
     initSystemClockTo40Mhz();
     initHw();
@@ -78,7 +75,6 @@ int main(void) {
     ok &= createThread(uncooperative, "Uncoop", 12, 1024);
     ok &= createThread(errant, "Errant", 12, 512);
     ok &= createThread(shell, "Shell", 12, 4096);
-    // TODO: Add code to implement a periodic timer and ISR
 
     // Start up RTOS
     if (ok)

@@ -1,16 +1,23 @@
-// Kernel functions
-// J Losh
+/******************************************************************************
+ * File:        kernel.c
+ *
+ * Author:      Giancarlo Perez
+ *
+ * Created:     12/7/24
+ *
+ * Description: -
+ ******************************************************************************/
 
-//-----------------------------------------------------------------------------
-// Hardware Target
-//-----------------------------------------------------------------------------
+//=============================================================================
+// HARDWARE TARGET
+//=============================================================================
 
 // Target uC:       TM4C123GH6PM
 // System Clock:    40 MHz
 
-//-----------------------------------------------------------------------------
-// Device includes, defines, and assembler directives
-//-----------------------------------------------------------------------------
+//=============================================================================
+// INCLUDES
+//=============================================================================
 
 #include <stdint.h>
 #include "tm4c123gh6pm.h"
@@ -18,15 +25,23 @@
 #include "kernel.h"
 #include "uart0.h"
 
+//=============================================================================
+// DEFINES AND MACROS
+//=============================================================================
+
 #ifndef NULL
  #define NULL 0
 #endif
-//-----------------------------------------------------------------------------
-// RTOS Defines and Kernel Variables
-//-----------------------------------------------------------------------------
 
 // task
 #define INVALID_TASK 0xFF
+// tcb
+#define NUM_PRIORITIES   16
+
+//=============================================================================
+// GLOBALS
+//=============================================================================
+
 uint8_t taskCurrent = 0;          // index of last dispatched task
 uint8_t taskCount = 0;            // total number of valid tasks
 uint8_t firstTask = 1;
@@ -36,8 +51,6 @@ bool priorityScheduler = true;    // priority (true) or round-robin (false)
 bool priorityInheritance = false; // priority inheritance for mutexes
 bool preemption = true;          // preemption (true) or cooperative (false)
 
-// tcb
-#define NUM_PRIORITIES   16
 typedef struct _tcb {
     uint8_t state;                 // see STATE_ values above
     void* pid;                     // used to uniquely identify thread (add of task fn)
@@ -60,9 +73,9 @@ uint32_t systime = 0; //in ticks (ms)
 uint8_t pingpong = 0; //write to A(0) or B(1)
 //denominator is every time ping pong is switched (2 seconds)
 
-//-----------------------------------------------------------------------------
-// Private Helper Functions
-//-----------------------------------------------------------------------------
+//=============================================================================
+// STATIC FUNCTIONS
+//=============================================================================
 
 //automatically pushes value and decrements sp by 4 bytes (32 bits)
 static void push_to_stack(uint32_t** sp, uint32_t val) {
@@ -145,9 +158,21 @@ static uint8_t rtosScheduler(void) {
     return priorityScheduler ? currIdxPrio[highestPrio] : task;
 }
 
-//-----------------------------------------------------------------------------
-// Subroutines
-//-----------------------------------------------------------------------------
+//=============================================================================
+// PUBLIC FUNCTIONS
+//=============================================================================
+
+uint32_t getCurrentTask() {
+    return taskCurrent;
+}
+
+uint32_t getCurrentPid() {
+    return (uint32_t)tcb[taskCurrent].pid;
+}
+
+uint32_t getSysTime() {
+    return systime;
+}
 
 bool initMutex(uint8_t mutex) {
     bool ok = (mutex < MAX_MUTEXES);
@@ -183,9 +208,7 @@ void initRtos(void) {
     }
 }
 
-// REQUIRED: modify this function to start the operating system
-// by calling scheduler, set srd bits, setting PSP, ASP bit, call fn with fn add in R0
-// fn set TMPL bit, and PC <= fn
+
 void startRtos(void) {
     uint64_t srd = createNoSramAccessMask(); //create temporary SRAM access mask so that startRTOS svCall can push onto stack initially
     addSramAccessWindow(&srd, (uint32_t*)0x20007C00, 0x401);
@@ -196,12 +219,7 @@ void startRtos(void) {
     __asm(" SVC #0x00"); //start RTOS
 }
 
-// REQUIRED:
-// add task if room in task list
-// store the thread name
-// allocate stack space and store top of stack in sp and spInit
-// set the srd bits based on the memory allocation
-// initialize the created stack to make it appear the thread has run before
+
 bool createThread(_fn fn, const char name[], uint8_t priority, uint32_t stackBytes) {
     bool ok = false;
     uint8_t i = 0;
@@ -245,7 +263,7 @@ bool createThread(_fn fn, const char name[], uint8_t priority, uint32_t stackByt
     return ok;
 }
 
-uint32_t kill_proc(uint32_t pid) { //svc stuff goes in here
+int32_t kill_proc(uint32_t pid) { //svc stuff goes in here
     uint32_t i = taskFromPid(pid);
     uint32_t j, next;
     uint32_t stat = 1;
@@ -304,11 +322,11 @@ uint32_t kill_proc(uint32_t pid) { //svc stuff goes in here
             tcb[i].state = STATE_STOPPED;
         }
         else {
-            stat = 0;
+            stat = -1;
         }
     }
     else {
-        stat = 0;
+        stat = -1;
     }
     //set thread to STATE_STOPPED
     //loop through alloc table, if owner is pid free()
@@ -316,65 +334,42 @@ uint32_t kill_proc(uint32_t pid) { //svc stuff goes in here
     return stat;
 }
 
-// REQUIRED: modify this function to restart a thread
-uint32_t restartThread(_fn fn) {
-    __asm(" SVC #0x10");
-    //return R0
+void yield(void) {
+    __asm(" SVC #0x01"); // SVC_YIELD
 }
 
-// REQUIRED: modify this function to stop a thread
-// REQUIRED: remove any pending semaphore waiting, unlock any mutexes
+void sleep(uint32_t tick) {
+    __asm(" SVC #0x02");
+}
+
+void lock(int8_t mutex) {
+    __asm(" SVC #0x03");
+}
+
+void unlock(int8_t mutex) {
+    __asm(" SVC #0x04");
+}
+
+void wait(int8_t semaphore) {
+    __asm(" SVC #0x05");
+}
+
+void post(int8_t semaphore) {
+    __asm(" SVC #0x06");
+}
+
 uint32_t stopThread(_fn fn) {
     __asm(" SVC #0x0E");
     //return R0
 }
 
-// REQUIRED: modify this function to set a thread priority
+uint32_t restartThread(_fn fn) {
+    __asm(" SVC #0x10");
+    //return R0
+}
+
 void setThreadPriority(_fn fn, uint8_t priority) {
     __asm(" SVC #0x11");
-}
-
-uint32_t getCurrentTask() {
-    return taskCurrent;
-}
-
-uint32_t getCurrentPid() {
-    return (uint32_t)tcb[taskCurrent].pid;
-}
-
-uint32_t getSysTime() {
-    return systime;
-}
-
-// REQUIRED: modify this function to yield execution back to scheduler using pendsv
-void yield(void) {
-    __asm(" SVC #0x01"); // SVC_YIELD
-}
-
-// REQUIRED: modify this function to support 1ms system timer
-// execution yielded back to scheduler until time elapses using pendsv
-void sleep(uint32_t tick) {
-    __asm(" SVC #0x02");
-}
-
-// REQUIRED: modify this function to lock a mutex using pendsv
-void lock(int8_t mutex) {
-    __asm(" SVC #0x03");
-}
-
-// REQUIRED: modify this function to unlock a mutex using pendsv
-void unlock(int8_t mutex) {
-    __asm(" SVC #0x04");
-}
-
-// REQUIRED: modify this function to wait a semaphore using pendsv
-void wait(int8_t semaphore) {
-    __asm(" SVC #0x05");
-}
-
-// REQUIRED: modify this function to signal a semaphore is available using pendsv
-void post(int8_t semaphore) {
-    __asm(" SVC #0x06");
 }
 
 void* malloc_from_heap(uint32_t size) {
@@ -406,7 +401,7 @@ void sysTickIsr(void) {
             }
         }
     }
-    if (is1sec) { //if 2000ms reached
+    if (is1sec) { //if 1000ms reached
         pingpong ^= 1; //flip ping
     }
     if (preemption) { //if preemption is enabled, context switch to next task
@@ -433,11 +428,8 @@ __attribute__((naked)) void pendsvIsr(void) {
     }
     firstTask = 0;
     tcb[taskCurrent].elapsed[pingpong] += (systime - tcb[taskCurrent].runtime);
-
     taskCurrent = rtosScheduler(); //call scheduler
-
     tcb[taskCurrent].runtime = systime; //records the starting time of the task
-
     applySramAccessMask(tcb[taskCurrent].srd); //restore SRD
     setPsp(tcb[taskCurrent].sp); //restore PSP
     popR11_R4(); //restore all regs (R11-R4)
